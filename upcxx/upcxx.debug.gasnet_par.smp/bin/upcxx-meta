@@ -1,0 +1,9 @@
+#!/bin/sh
+PPFLAGS="-DUPCXX_ASSERT_ENABLED=1 -DUPCXX_BACKEND=1 -DUPCXX_BACKEND_GASNET_PAR=1 -DUPCXX_LPC_INBOX_lockfree=1 -D_GNU_SOURCE=1 -DGASNET_PAR -D_REENTRANT -I/home/ernest/PSRS_p2/upcxx/gasnet.debug/include -I/home/ernest/PSRS_p2/upcxx/gasnet.debug/include/smp-conduit -I/home/ernest/PSRS_p2/upcxx/upcxx.debug.gasnet_par.smp/include"
+LDFLAGS="-g3 -Wno-unused -Wno-unused-parameter -Wno-address"
+LIBFLAGS="-L/home/ernest/PSRS_p2/upcxx/upcxx.debug.gasnet_par.smp/lib -lupcxx -L/home/ernest/PSRS_p2/upcxx/gasnet.debug/lib -lgasnet-smp-par -lpthread -lrt -L/usr/lib/gcc/x86_64-linux-gnu/5 -lgcc -lm"
+CC='gcc'
+CXX='g++'
+GASNET_CONDUIT='smp'
+GASNET_INSTALL='/home/ernest/PSRS_p2/upcxx/gasnet.debug'
+[ "$1" != "" ] && eval echo '$'"$1"

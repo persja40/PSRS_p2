@@ -1,0 +1,64 @@
+#!/bin/bash
+# This file is generated during installation - do not edit
+
+function echo_and_die {
+  echo $* >&2
+  exit 1
+}
+
+PARAMS="PPFLAGS LIBFLAGS LDFLAGS CXX CC GASNET_CONDUIT GASNET_INSTALL"
+FAIL=true
+for P in $PARAMS; do
+    if [[ "$1" == "$P" ]]; then
+        FAIL=false
+        break
+    fi
+done
+
+if [[ $FAIL == true ]]; then
+    echo_and_die "Error: parameter passed to upcxx-meta must be one of $PARAMS"
+fi
+
+case ${UPCXX_CODEMODE} in
+"")
+  UPCXX_CODEMODE=O3
+  ;;
+debug|O3)
+  ;;
+*)
+  echo_and_die "UPCXX_CODEMODE must be set to one of: O3 (default), debug"
+  ;;
+esac
+
+case ${UPCXX_THREADMODE} in
+"")
+  UPCXX_THREADMODE=seq
+  ;;
+seq|par)
+  ;;
+*)
+  echo_and_die "UPCXX_THREADMODE must be set to one of: seq (default), par"
+  ;;
+esac
+
+case "${UPCXX_GASNET_CONDUIT}" in
+'')
+  UPCXX_GASNET_CONDUIT="smp"
+  ;;
+smp|udp|mpi)
+  ;;
+*)
+  echo_and_die "UPCXX_GASNET_CONDUIT must be one of: smp, udp, mpi"
+  ;;
+esac
+
+case ${UPCXX_THREADMODE} in
+seq)
+  UPCXX_BACKEND=gasnet_seq
+  ;;
+par)
+  UPCXX_BACKEND=gasnet_par
+  ;;
+esac
+
+/home/ernest/PSRS_p2/upcxx/upcxx.${UPCXX_CODEMODE}.${UPCXX_BACKEND}.${UPCXX_GASNET_CONDUIT}/bin/upcxx-meta $*
