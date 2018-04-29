@@ -1,9 +1,0 @@
-#!/bin/sh
-PPFLAGS="-DUPCXX_ASSERT_ENABLED=0 -DUPCXX_BACKEND=1 -DUPCXX_BACKEND_GASNET_PAR=1 -DUPCXX_LPC_INBOX_lockfree=1 -D_GNU_SOURCE=1 -DGASNET_PAR -D_REENTRANT -I/home/ernest/PSRS_p2/upcxx/gasnet.opt/include -I/home/ernest/PSRS_p2/upcxx/gasnet.opt/include/udp-conduit -I/home/ernest/PSRS_p2/upcxx/upcxx.O3.gasnet_par.udp/include"
-LDFLAGS="-O2 -Wno-unused -Wno-unused-parameter -Wno-address"
-LIBFLAGS="-L/home/ernest/PSRS_p2/upcxx/upcxx.O3.gasnet_par.udp/lib -lupcxx -L/home/ernest/PSRS_p2/upcxx/gasnet.opt/lib -lgasnet-udp-par -lamudp -lpthread -lrt -L/usr/lib/gcc/x86_64-linux-gnu/5 -lgcc -lm"
-CC='gcc'
-CXX='g++'
-GASNET_CONDUIT='udp'
-GASNET_INSTALL='/home/ernest/PSRS_p2/upcxx/gasnet.opt'
-[ "$1" != "" ] && eval echo '$'"$1"
