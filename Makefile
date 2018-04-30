@@ -32,5 +32,11 @@ clean:
 
 .PHONY: echo
 
+install:
+	rm -rf upcxx
+	mkdir upcxx
+	cd upcxx-2018.3.0
+	./install ../upcxx
+
 echo:
 	echo $(shell $(UPCXX) PPFLAGS)
