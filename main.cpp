@@ -50,14 +50,37 @@ int main(int argc, char *argv[])
     global_data = upcxx::broadcast(global_data, 0).wait();
 
     // PHASE II
+    {
+        auto fut = rget(global_data_size);
+        fut.wait();
+        int min_index = static_cast<double>(myid) / numprocs * fut.result(); //start from this index
+        int limit = static_cast<double>(myid + 1) / numprocs * fut.result();
+        int max_index = limit > fut.result() ? fut.result() : limit; //end before this
+        vector<int> local_data{};
+        for (int i = min_index; i < max_index; i++)
+        {
+            auto fut = rget(global_data + i);
+            fut.wait();
+            local_data.push_back(fut.result());
+        }
+        sort(begin(local_data), end(local_data));
+        for (int i = 0; i < local_data.size(); i++)
+            upcxx::rput(local_data[i], global_data + min_index + i).wait();
+        cout << "ID: " << myid << "  start  " << min_index << "   stop  " << max_index << endl;
+    }
 
+    // PHASE III
+    
+
+    upcxx::barrier();
     //COUT TEST SECTION
     if (myid == 0)
         cout << "liczba wątków: " << numprocs << endl;
-    if (myid == 2){
-        auto fut = rget ( global_data_size );
+    if (myid == 2)
+    {
+        auto fut = rget(global_data_size);
         fut.wait();
-        cout<<"Ilosc elem: "<<fut.result()<<endl;
+        cout << "Ilosc elem: " << fut.result() << endl;
     }
     // close down UPC++ runtime
     upcxx::finalize();
