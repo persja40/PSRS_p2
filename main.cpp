@@ -50,12 +50,13 @@ int main(int argc, char *argv[])
     global_data = upcxx::broadcast(global_data, 0).wait();
 
     // PHASE II
+    auto fut = rget(global_data_size);
+    fut.wait();
+    int size = fut.result();
     {
-        auto fut = rget(global_data_size);
-        fut.wait();
-        int min_index = static_cast<double>(myid) / numprocs * fut.result(); //start from this index
-        int limit = static_cast<double>(myid + 1) / numprocs * fut.result();
-        int max_index = limit > fut.result() ? fut.result() : limit; //end before this
+        int min_index = static_cast<double>(myid) / numprocs * size; //start from this index
+        int limit = static_cast<double>(myid + 1) / numprocs * size;
+        int max_index = limit > size ? size : limit; //end before this
         vector<int> local_data{};
         for (int i = min_index; i < max_index; i++)
         {
@@ -66,13 +67,39 @@ int main(int argc, char *argv[])
         sort(begin(local_data), end(local_data));
         for (int i = 0; i < local_data.size(); i++)
             upcxx::rput(local_data[i], global_data + min_index + i).wait();
-        cout << "ID: " << myid << "  start  " << min_index << "   stop  " << max_index << endl;
+        // cout << "ID: " << myid << "  start  " << min_index << "   stop  " << max_index << endl;
     }
 
     // PHASE III
-    
-
     upcxx::barrier();
+    upcxx::global_ptr<int> pivots = nullptr;
+    if (myid == 0)
+    {
+        vector<int> piv{};
+        for (int i = 0; i < numprocs; i++) //each thread
+        {
+            int min_index = static_cast<double>(i) / numprocs * size; //start from this index
+            int limit = static_cast<double>(i + 1) / numprocs * size;
+            int max_index = limit > size ? size : limit; //end before this
+            for (int j = 0; j < numprocs; j++)
+            { //find thread_nr pivots
+                auto fut = rget(global_data + min_index + round(j * static_cast<double>(max_index - 1 - min_index) / (numprocs + 1)));
+                fut.wait();
+                piv.push_back(fut.result());
+            }
+        }
+        sort(begin(piv), end(piv));
+        // for (const auto &e : piv)
+        //     cout << e << " ";
+        // cout << endl;
+        pivots = upcxx::new_<int>(numprocs);
+        for (int i = 1; i < numprocs; i++) //select pivots value
+            upcxx::rput(static_cast<double>(i)/(numprocs + 1), pivots + i).wait();
+    }
+    pivots = upcxx::broadcast(pivots, 0).wait();
+
+    // PHASE IV
+
     //COUT TEST SECTION
     if (myid == 0)
         cout << "liczba wątków: " << numprocs << endl;
