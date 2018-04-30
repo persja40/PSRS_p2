@@ -5,25 +5,24 @@ all:
 MAKEFLAGS = --no-print-directory
 
 CC= g++ # dla C++:   CC=g++
-UPCXX=upcxx/bin/upcxx-meta
 CFLAGS= -O2 -std=c++14 
 INCLUDE=
 LIB= #-lpthread -lm -lgsl -lgslcblas # dla lapacka:	LIB= -lm -llapack -lblas
 SOURCES= 
 OBJECTS= $(SOURCES:.cpp=.o)
 ARGS=
+UPCXX_INSTALL=upcxx/
+PPFLAGS=$(shell $(UPCXX_INSTALL)/bin/upcxx-meta PPFLAGS)
+LDFLAGS=$(shell $(UPCXX_INSTALL)/bin/upcxx-meta LDFLAGS)
+LIBFLAGS=$(shell $(UPCXX_INSTALL)/bin/upcxx-meta LIBFLAGS)
 
 TARGET = program
 
 $(TARGET): main.cpp $(OBJECTS)
-	$(CC) -O2 -std=c++14 $(shell $(UPCXX) PPFLAGS) $(shell $(UPCXX) LDFLAGS) $(shell $(UPCXX) LIBFLAGS) -o $@ $^ $(LIB)
-
-#.c.o:
-#	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
-
-#run on one machine with 4 cores
+	$(CC) -O2 -std=c++14 $< $(PPFLAGS) $(LDFLAGS) $(EXTRA_FLAGS) $(LIBFLAGS) -o $@
+	
 run:
-	mpiexec -n 3 ./program $(ARGS)
+	$(UPCXX_INSTALL)/bin/upcxx-run -n 3 $(TARGET) $(ARGS)
 
 .PHONY: clean
 
