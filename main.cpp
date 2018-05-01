@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
     // PHASE III
     upcxx::barrier();
     upcxx::global_ptr<int> final_data = nullptr;
+    upcxx::global_ptr<int> data_part = nullptr;
     if (myid == 0)
     {
         vector<int> piv{};
@@ -85,28 +86,31 @@ int main(int argc, char *argv[])
             int max_index = limit > size ? size : limit; //end before this
             for (int j = 0; j < numprocs; j++)
             { //find thread_nr pivots
-                auto fut = rget(global_data + min_index + floor(j * static_cast<double>(max_index - min_index) / (numprocs)));
+                auto fut = rget(global_data + min_index + round(j * static_cast<double>(max_index - min_index) / (numprocs)));
                 fut.wait();
                 piv.push_back(fut.result());
             }
         }
         sort(begin(piv), end(piv));
-        cout<<"Piv: ";
-        for (const auto &e : piv)
-            cout << e << " ";
-        cout << endl;
+        // cout << "Piv: ";
+        // for (const auto &e : piv)
+        //     cout << e << " ";
+        // cout << endl;
         vector<int> pivots{};
         final_data = upcxx::new_array<int>(size);
         for (int i = 1; i < numprocs; i++) //select pivots value
             pivots.push_back(piv[numprocs * i]);
         pivots.push_back(std::numeric_limits<int>::max()); //fake max pivot for iteration in phase iv
 
-        cout << "Pivots: ";
-        for (const auto &e : pivots)
-            cout << e << " ";
-        cout << endl;
+        // cout << "Pivots: ";
+        // for (const auto &e : pivots)
+        //     cout << e << " ";
+        // cout << endl;
 
         // PHASE IV
+        vector<vector<int>> merge_data{};//size of local tables when size%numrpocs!=0 will slightly change
+        for (int i = 0; i < numprocs; i++)
+            merge_data.push_back(*new vector<int>());
         vector<int> ind(numprocs); //indexes for iteration over final_data
         fill(begin(ind), end(ind), 0);
         vector<pair<int, int>> piv_ind{}; //pivot's indexes <start, max> for each thread
@@ -117,10 +121,11 @@ int main(int argc, char *argv[])
             int max_index = limit > size ? size : limit; //end before this
             piv_ind.push_back(make_pair(min_index, max_index));
         }
-        cout << "Pivots indexes: ";
-        for (const auto &e : piv_ind)
-            cout << get<0>(e) << ":" << get<1>(e) << " ";
-        cout << endl;
+        // cout << "Pivots indexes: ";
+        // for (const auto &e : piv_ind)
+        //     cout << get<0>(e) << ":" << get<1>(e) << " ";
+        // cout << endl;
+        data_part = upcxx::new_<int>(numprocs);
 
         for (int i = 0; i < numprocs; i++)
         {                     //each thread
@@ -133,7 +138,7 @@ int main(int argc, char *argv[])
                 int v = fut.result();
                 if (v < pivots[curr_piv])
                 {
-                    upcxx::rput(v, final_data + get<0>(piv_ind[curr_piv]) + ind[curr_piv]).wait();
+                    merge_data[curr_piv].push_back(v);
                     ind[curr_piv]++;
                 }
                 else
@@ -144,19 +149,52 @@ int main(int argc, char *argv[])
                 }
             }
         }
-        cout << "Ind: ";
-        for (const auto &e : ind)
-            cout << e << " ";
-        cout << endl;
-        //upcxx::delete_array(global_data);
+        // cout << "Ind: ";
+        // for (const auto &e : ind)
+        //     cout << e << " ";
+        // cout << endl;
+
+        // cout << "Merge_data: " << endl;
+        // for (const auto &e : merge_data)
+        // {
+        //     for (const auto &f : e)
+        //         cout << f << " ";
+        //     cout << endl;
+        // }
+
+        int t = 0;
+        int d = 0;
+        int inx = 0;
+        for (const auto &e : merge_data)
+        {
+            for (const auto &f : e)
+            {
+                upcxx::rput(f, final_data + t).wait();
+                t++;
+            }
+            inx += e.size();
+            upcxx::rput(inx, data_part + d).wait();
+            d++;
+        }
+        upcxx::delete_array(global_data);
     }
     final_data = upcxx::broadcast(final_data, 0).wait();
+    data_part = upcxx::broadcast(data_part, 0).wait();
 
     // PHASE V
     {
-        int min_index = ceil(static_cast<double>(myid) / numprocs * size); //start from this index
-        int limit = ceil(static_cast<double>(myid + 1) / numprocs * size);
-        int max_index = limit > size ? size : limit; //end before this
+        int min_index;
+        if (myid == 0)
+            min_index = 0;
+        else
+        {
+            auto fut = rget(data_part + myid - 1);
+            fut.wait();
+            min_index = fut.result();
+        }
+        auto fut = rget(data_part + myid);
+        fut.wait();
+        int max_index = fut.result();
         vector<int> local_data{};
         for (int i = min_index; i < max_index; i++)
         {
@@ -203,29 +241,41 @@ int main(int argc, char *argv[])
     //     }
     //     cout << endl;
     // }
-    if (myid == 2)
-    {
-        cout << "Final data: ";
-        for (int i = 0; i < size; i++)
-        {
-            auto fut = rget(final_data + i);
-            fut.wait();
-            cout << fut.result() << " ";
-        }
-        cout << endl;
-    }
+    // if (myid == 2)
+    // {
+    //     cout << "Final data: ";
+    //     for (int i = 0; i < size; i++)
+    //     {
+    //         auto fut = rget(final_data + i);
+    //         fut.wait();
+    //         cout << fut.result() << " ";
+    //     }
+    //     cout << endl;
+    // }
 
-    if (myid == 1)
-    {
-        cout << "Global data: ";
-        for (int i = 0; i < size; i++)
-        {
-            auto fut = rget(global_data + i);
-            fut.wait();
-            cout << fut.result() << " ";
-        }
-        cout << endl;
-    }
+    // if (myid == 1)
+    // {
+    //     cout << "Data part: ";
+    //     for (int i = 0; i < numprocs; i++)
+    //     {
+    //         auto fut = rget(data_part + i);
+    //         fut.wait();
+    //         cout << fut.result() << " ";
+    //     }
+    //     cout << endl;
+    // }
+
+    // if (myid == 1)
+    // {
+    //     cout << "Global data: ";
+    //     for (int i = 0; i < size; i++)
+    //     {
+    //         auto fut = rget(global_data + i);
+    //         fut.wait();
+    //         cout << fut.result() << " ";
+    //     }
+    //     cout << endl;
+    // }
 
     // close down UPC++ runtime
     upcxx::finalize();
