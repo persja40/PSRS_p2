@@ -89,26 +89,38 @@ int main(int argc, char *argv[])
             }
         }
         sort(begin(piv), end(piv));
-        // for (const auto &e : piv)
-        //     cout << e << " ";
-        // cout << endl;
-        pivots = upcxx::new_<int>(numprocs);
+        for (const auto &e : piv)
+            cout << e << " ";
+        cout << endl;
+        pivots = upcxx::new_<int>(numprocs - 1);
         for (int i = 1; i < numprocs; i++) //select pivots value
-            upcxx::rput(static_cast<double>(i)/(numprocs + 1), pivots + i).wait();
+            upcxx::rput(piv[numprocs * i], pivots + i - 1).wait();
     }
     pivots = upcxx::broadcast(pivots, 0).wait();
 
     // PHASE IV
 
     //COUT TEST SECTION
-    if (myid == 0)
-        cout << "liczba wątków: " << numprocs << endl;
-    if (myid == 2)
-    {
-        auto fut = rget(global_data_size);
-        fut.wait();
-        cout << "Ilosc elem: " << fut.result() << endl;
-    }
+    // if (myid == 0)
+    //     cout << "liczba wątków: " << numprocs << endl;
+    // if (myid == 2)
+    // {
+    //     auto fut = rget(global_data_size);
+    //     fut.wait();
+    //     cout << "Ilosc elem: " << fut.result() << endl;
+    // }
+    // upcxx::barrier();
+    // if (myid == 2)
+    // {
+    //     for (int i = 0; i < numprocs - 1; i++)
+    //     {
+    //         auto fut = rget(pivots + i);
+    //         fut.wait();
+    //         cout << fut.result() << " ";
+    //     }
+    //     cout << endl;
+    // }
+
     // close down UPC++ runtime
     upcxx::finalize();
     return 0;
