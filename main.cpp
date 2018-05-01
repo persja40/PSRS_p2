@@ -6,6 +6,8 @@
 #include <numeric>
 #include <vector>
 #include <future>
+#include <limits>
+#include <utility>
 
 using namespace std;
 
@@ -72,7 +74,7 @@ int main(int argc, char *argv[])
 
     // PHASE III
     upcxx::barrier();
-    upcxx::global_ptr<int> pivots = nullptr;
+    upcxx::global_ptr<int> final_data = nullptr;
     if (myid == 0)
     {
         vector<int> piv{};
@@ -89,16 +91,63 @@ int main(int argc, char *argv[])
             }
         }
         sort(begin(piv), end(piv));
-        for (const auto &e : piv)
-            cout << e << " ";
-        cout << endl;
-        pivots = upcxx::new_<int>(numprocs - 1);
+        // for (const auto &e : piv)
+        //     cout << e << " ";
+        // cout << endl;
+        vector<int> pivots{};
+        final_data = upcxx::new_array<int>(size);
         for (int i = 1; i < numprocs; i++) //select pivots value
-            upcxx::rput(piv[numprocs * i], pivots + i - 1).wait();
-    }
-    pivots = upcxx::broadcast(pivots, 0).wait();
+            pivots.push_back(piv[numprocs * i]);
+        pivots.push_back(std::numeric_limits<int>::max()); //fake max pivot for iteration in phase iv
 
-    // PHASE IV
+        // cout << "Pivots: ";
+        // for (const auto &e : pivots)
+        //     cout << e << " ";
+        // cout << endl;
+
+        // PHASE IV
+        vector<int> ind(numprocs); //indexes for iteration over final_data
+        fill(begin(ind), end(ind), 0);
+        vector<pair<int, int>> piv_ind{}; //pivot's indexes <start, max> for each thread
+        for (int i = 0; i < numprocs; i++)
+        {
+            int min_index = static_cast<double>(i) / numprocs * size; //start from this index
+            int limit = static_cast<double>(i + 1) / numprocs * size;
+            int max_index = limit > size ? size : limit; //end before this
+            piv_ind.push_back(make_pair(min_index, max_index));
+        }
+        // cout << "Pivots indexes: ";
+        // for (const auto &e : piv_ind)
+        //     cout << get<0>(e) << ":" << get<1>(e) << " ";
+        // cout << endl;
+
+        for (int i = 0; i < numprocs; i++)
+        {                     //each thread
+            int curr_piv = 0; //current pivot
+            int range = get<1>(piv_ind[i]) - get<0>(piv_ind[i]);
+            for (int j = 0; j < range; j++)
+            {
+                auto fut = rget(global_data + j + get<0>(piv_ind[i]));
+                fut.wait();
+                int v = fut.result();
+                if (v < pivots[curr_piv])
+                {
+                    upcxx::rput(v, final_data + get<0>(piv_ind[curr_piv]) + ind[curr_piv]).wait();
+                    ind[curr_piv]++;
+                }
+                else
+                { //retry with next pivot
+                    curr_piv++;
+                    j--;
+                    continue;
+                }
+            }
+        }
+        upcxx::delete_array(global_data);
+    }
+    final_data = upcxx::broadcast(final_data, 0).wait();
+
+    // PHASE V
 
     //COUT TEST SECTION
     // if (myid == 0)
@@ -115,6 +164,29 @@ int main(int argc, char *argv[])
     //     for (int i = 0; i < numprocs - 1; i++)
     //     {
     //         auto fut = rget(pivots + i);
+    //         fut.wait();
+    //         cout << fut.result() << " ";
+    //     }
+    //     cout << endl;
+    // }
+    // if (myid == 2)
+    // {
+    //     cout << "Final data: ";
+    //     for (int i = 0; i < size; i++)
+    //     {
+    //         auto fut = rget(final_data + i);
+    //         fut.wait();
+    //         cout << fut.result() << " ";
+    //     }
+    //     cout << endl;
+    // }
+
+    // if (myid == 1)
+    // {
+    //     cout << "Global data: ";
+    //     for (int i = 0; i < size; i++)
+    //     {
+    //         auto fut = rget(global_data + i);
     //         fut.wait();
     //         cout << fut.result() << " ";
     //     }
