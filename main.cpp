@@ -56,8 +56,8 @@ int main(int argc, char *argv[])
     fut.wait();
     int size = fut.result();
     {
-        int min_index = round(static_cast<double>(myid) / numprocs * size); //start from this index
-        int limit = round(static_cast<double>(myid + 1) / numprocs * size);
+        int min_index = ceil(static_cast<double>(myid) / numprocs * size); //start from this index
+        int limit = ceil(static_cast<double>(myid + 1) / numprocs * size);
         int max_index = limit > size ? size : limit; //end before this
         vector<int> local_data{};
         for (int i = min_index; i < max_index; i++)
@@ -80,8 +80,8 @@ int main(int argc, char *argv[])
         vector<int> piv{};
         for (int i = 0; i < numprocs; i++) //each thread
         {
-            int min_index = round(static_cast<double>(i) / numprocs * size); //start from this index
-            int limit = round(static_cast<double>(i + 1) / numprocs * size);
+            int min_index = ceil(static_cast<double>(i) / numprocs * size); //start from this index
+            int limit = ceil(static_cast<double>(i + 1) / numprocs * size);
             int max_index = limit > size ? size : limit; //end before this
             for (int j = 0; j < numprocs; j++)
             { //find thread_nr pivots
@@ -112,8 +112,8 @@ int main(int argc, char *argv[])
         vector<pair<int, int>> piv_ind{}; //pivot's indexes <start, max> for each thread
         for (int i = 0; i < numprocs; i++)
         {
-            int min_index = round(static_cast<double>(i) / numprocs * size); //start from this index
-            int limit = round(static_cast<double>(i + 1) / numprocs * size);
+            int min_index = ceil(static_cast<double>(i) / numprocs * size); //start from this index
+            int limit = ceil(static_cast<double>(i + 1) / numprocs * size);
             int max_index = limit > size ? size : limit; //end before this
             piv_ind.push_back(make_pair(min_index, max_index));
         }
@@ -154,8 +154,8 @@ int main(int argc, char *argv[])
 
     // PHASE V
     {
-        int min_index = round(static_cast<double>(myid) / numprocs * size); //start from this index
-        int limit = round(static_cast<double>(myid + 1) / numprocs * size);
+        int min_index = ceil(static_cast<double>(myid) / numprocs * size); //start from this index
+        int limit = ceil(static_cast<double>(myid + 1) / numprocs * size);
         int max_index = limit > size ? size : limit; //end before this
         vector<int> local_data{};
         for (int i = min_index; i < max_index; i++)
@@ -170,6 +170,7 @@ int main(int argc, char *argv[])
         // cout << "ID: " << myid << "  start  " << min_index << "   stop  " << max_index << endl;
     }
 
+    upcxx::barrier();
     //Check if sorted
     if (myid == 0)
     {
