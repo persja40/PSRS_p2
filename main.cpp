@@ -56,8 +56,8 @@ int main(int argc, char *argv[])
     fut.wait();
     int size = fut.result();
     {
-        int min_index = static_cast<double>(myid) / numprocs * size; //start from this index
-        int limit = static_cast<double>(myid + 1) / numprocs * size;
+        int min_index = round(static_cast<double>(myid) / numprocs * size); //start from this index
+        int limit = round(static_cast<double>(myid + 1) / numprocs * size);
         int max_index = limit > size ? size : limit; //end before this
         vector<int> local_data{};
         for (int i = min_index; i < max_index; i++)
@@ -80,8 +80,8 @@ int main(int argc, char *argv[])
         vector<int> piv{};
         for (int i = 0; i < numprocs; i++) //each thread
         {
-            int min_index = static_cast<double>(i) / numprocs * size; //start from this index
-            int limit = static_cast<double>(i + 1) / numprocs * size;
+            int min_index = round(static_cast<double>(i) / numprocs * size); //start from this index
+            int limit = round(static_cast<double>(i + 1) / numprocs * size);
             int max_index = limit > size ? size : limit; //end before this
             for (int j = 0; j < numprocs; j++)
             { //find thread_nr pivots
@@ -91,19 +91,20 @@ int main(int argc, char *argv[])
             }
         }
         sort(begin(piv), end(piv));
-        // for (const auto &e : piv)
-        //     cout << e << " ";
-        // cout << endl;
+        cout<<"Piv: ";
+        for (const auto &e : piv)
+            cout << e << " ";
+        cout << endl;
         vector<int> pivots{};
         final_data = upcxx::new_array<int>(size);
         for (int i = 1; i < numprocs; i++) //select pivots value
             pivots.push_back(piv[numprocs * i]);
         pivots.push_back(std::numeric_limits<int>::max()); //fake max pivot for iteration in phase iv
 
-        // cout << "Pivots: ";
-        // for (const auto &e : pivots)
-        //     cout << e << " ";
-        // cout << endl;
+        cout << "Pivots: ";
+        for (const auto &e : pivots)
+            cout << e << " ";
+        cout << endl;
 
         // PHASE IV
         vector<int> ind(numprocs); //indexes for iteration over final_data
@@ -111,15 +112,15 @@ int main(int argc, char *argv[])
         vector<pair<int, int>> piv_ind{}; //pivot's indexes <start, max> for each thread
         for (int i = 0; i < numprocs; i++)
         {
-            int min_index = static_cast<double>(i) / numprocs * size; //start from this index
-            int limit = static_cast<double>(i + 1) / numprocs * size;
+            int min_index = round(static_cast<double>(i) / numprocs * size); //start from this index
+            int limit = round(static_cast<double>(i + 1) / numprocs * size);
             int max_index = limit > size ? size : limit; //end before this
             piv_ind.push_back(make_pair(min_index, max_index));
         }
-        // cout << "Pivots indexes: ";
-        // for (const auto &e : piv_ind)
-        //     cout << get<0>(e) << ":" << get<1>(e) << " ";
-        // cout << endl;
+        cout << "Pivots indexes: ";
+        for (const auto &e : piv_ind)
+            cout << get<0>(e) << ":" << get<1>(e) << " ";
+        cout << endl;
 
         for (int i = 0; i < numprocs; i++)
         {                     //each thread
@@ -143,14 +144,18 @@ int main(int argc, char *argv[])
                 }
             }
         }
+        cout << "Ind: ";
+        for (const auto &e : ind)
+            cout << e << " ";
+        cout << endl;
         //upcxx::delete_array(global_data);
     }
     final_data = upcxx::broadcast(final_data, 0).wait();
 
     // PHASE V
     {
-        int min_index = static_cast<double>(myid) / numprocs * size; //start from this index
-        int limit = static_cast<double>(myid + 1) / numprocs * size;
+        int min_index = round(static_cast<double>(myid) / numprocs * size); //start from this index
+        int limit = round(static_cast<double>(myid + 1) / numprocs * size);
         int max_index = limit > size ? size : limit; //end before this
         vector<int> local_data{};
         for (int i = min_index; i < max_index; i++)
