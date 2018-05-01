@@ -143,12 +143,40 @@ int main(int argc, char *argv[])
                 }
             }
         }
-        upcxx::delete_array(global_data);
+        //upcxx::delete_array(global_data);
     }
     final_data = upcxx::broadcast(final_data, 0).wait();
 
     // PHASE V
+    {
+        int min_index = static_cast<double>(myid) / numprocs * size; //start from this index
+        int limit = static_cast<double>(myid + 1) / numprocs * size;
+        int max_index = limit > size ? size : limit; //end before this
+        vector<int> local_data{};
+        for (int i = min_index; i < max_index; i++)
+        {
+            auto fut = rget(final_data + i);
+            fut.wait();
+            local_data.push_back(fut.result());
+        }
+        sort(begin(local_data), end(local_data));
+        for (int i = 0; i < local_data.size(); i++)
+            upcxx::rput(local_data[i], final_data + min_index + i).wait();
+        // cout << "ID: " << myid << "  start  " << min_index << "   stop  " << max_index << endl;
+    }
 
+    //Check if sorted
+    if (myid == 0)
+    {
+        vector<int> check{};
+        for (int i = 0; i < size; i++)
+        {
+            auto fut = rget(final_data + i);
+            fut.wait();
+            check.push_back(fut.result());
+        }
+        cout << "Is it sorted: " << is_sorted(begin(check), end(check)) << endl;
+    }
     //COUT TEST SECTION
     // if (myid == 0)
     //     cout << "liczba wątków: " << numprocs << endl;
@@ -169,29 +197,29 @@ int main(int argc, char *argv[])
     //     }
     //     cout << endl;
     // }
-    // if (myid == 2)
-    // {
-    //     cout << "Final data: ";
-    //     for (int i = 0; i < size; i++)
-    //     {
-    //         auto fut = rget(final_data + i);
-    //         fut.wait();
-    //         cout << fut.result() << " ";
-    //     }
-    //     cout << endl;
-    // }
+    if (myid == 2)
+    {
+        cout << "Final data: ";
+        for (int i = 0; i < size; i++)
+        {
+            auto fut = rget(final_data + i);
+            fut.wait();
+            cout << fut.result() << " ";
+        }
+        cout << endl;
+    }
 
-    // if (myid == 1)
-    // {
-    //     cout << "Global data: ";
-    //     for (int i = 0; i < size; i++)
-    //     {
-    //         auto fut = rget(global_data + i);
-    //         fut.wait();
-    //         cout << fut.result() << " ";
-    //     }
-    //     cout << endl;
-    // }
+    if (myid == 1)
+    {
+        cout << "Global data: ";
+        for (int i = 0; i < size; i++)
+        {
+            auto fut = rget(global_data + i);
+            fut.wait();
+            cout << fut.result() << " ";
+        }
+        cout << endl;
+    }
 
     // close down UPC++ runtime
     upcxx::finalize();
