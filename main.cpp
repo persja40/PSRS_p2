@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
             int max_index = limit > size ? size : limit; //end before this
             for (int j = 0; j < numprocs; j++)
             { //find thread_nr pivots
-                auto fut = rget(global_data + min_index + round(j * static_cast<double>(max_index - 1 - min_index) / (numprocs + 1)));
+                auto fut = rget(global_data + min_index + floor(j * static_cast<double>(max_index - min_index) / (numprocs)));
                 fut.wait();
                 piv.push_back(fut.result());
             }
