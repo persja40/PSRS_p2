@@ -220,6 +220,11 @@ int main(int argc, char *argv[])
             check.push_back(fut.result());
         }
         cout << "Is it sorted: " << is_sorted(begin(check), end(check)) << endl;
+        ofstream ofile;
+        ofile.open("result.txt");
+        for (auto &e : check)
+            ofile << e << " ";
+        ofile.close();
     }
     //COUT TEST SECTION
     // if (myid == 0)
